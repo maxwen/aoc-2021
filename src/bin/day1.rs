@@ -16,7 +16,23 @@ fn part1(lines: &[String]) -> u32 {
     sum
 }
 fn part2(lines: &[String]) -> u32 {
-    0u32
+    // 1252
+    let mut last = 0;
+    let mut sum = 0u32;
+
+    let mut i = 0;
+    while i < lines.len() - 2 {
+        let slice = &lines[i..i + 3];
+        let depth = slice.iter().map(|d| d.parse::<u32>().unwrap()).sum();
+        if last != 0 {
+            if depth > last {
+                sum += 1;
+            }
+        }
+        last = depth;
+        i += 1;
+    }
+    sum
 }
 
 fn main() {
@@ -41,13 +57,13 @@ mod tests {
         let lines = vec![
             "199", "200", "208", "210", "200", "207", "240", "269", "260", "263",
         ]
-            .iter()
-            .map(|s| s.to_string())
-            .collect::<Vec<_>>();
+        .iter()
+        .map(|s| s.to_string())
+        .collect::<Vec<_>>();
 
         let result = part1(&lines);
         assert_eq!(result, 7);
-        // let result = part2(&lines);
-        // assert_eq!(result, 45000);
+        let result = part2(&lines);
+        assert_eq!(result, 5);
     }
 }
