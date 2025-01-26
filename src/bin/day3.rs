@@ -18,25 +18,69 @@ fn part1(lines: &[String]) -> u32 {
                 _ => {}
             }
         }
-        gamma += if count_zero > count_one {
-            "0"
-        } else {
-            "1"
-        };
-        epsilon += if count_zero > count_one {
-            "1"
-        } else {
-            "0"
-        };
+        gamma += if count_zero > count_one { "0" } else { "1" };
+        epsilon += if count_zero > count_one { "1" } else { "0" };
     }
 
     // println!("{} {}", gamma, epsilon);
-    u32::from_str_radix(gamma.as_str(), 2).unwrap() * u32::from_str_radix(epsilon.as_str(), 2).unwrap()
+    u32::from_str_radix(gamma.as_str(), 2).unwrap()
+        * u32::from_str_radix(epsilon.as_str(), 2).unwrap()
 }
-fn part2(lines: &[String]) -> u32 {
-    let mut sum = 0u32;
 
-    sum
+fn calc_rate(lines: &[String], cmp: fn(u32, u32) -> u8) -> u32 {
+    let test = lines[0].to_string();
+    let count = test.len();
+    let mut process_lines = vec![];
+    lines.iter().for_each(|l| process_lines.push(l));
+
+    for i in 0..count {
+        let mut count_one = 0;
+        let mut count_zero = 0;
+        let mut ones = vec![];
+        let mut zeros = vec![];
+
+        for line in process_lines.iter() {
+            let bit = line.chars().nth(i).unwrap();
+            match bit {
+                '1' => {
+                    ones.push(*line);
+                    count_one += 1
+                }
+                '0' => {
+                    zeros.push(*line);
+                    count_zero += 1
+                }
+                _ => {}
+            }
+        }
+        process_lines.clear();
+
+        let cmp = cmp(count_zero, count_one);
+        if cmp == 0 {
+            process_lines.append(&mut zeros);
+        } else {
+            process_lines.append(&mut ones);
+        }
+        if process_lines.len() == 1 {
+            break;
+        }
+    }
+    u32::from_str_radix(process_lines.first().unwrap().as_str(), 2).unwrap()
+}
+
+fn part2(lines: &[String]) -> u32 {
+    // 4125600
+    let oxygen_rate = calc_rate(
+        lines,
+        |count_zero, count_one| if count_one >= count_zero { 1 } else { 0 },
+    );
+    let co2_scrubbing_rate =
+        calc_rate(
+            lines,
+            |count_zero, count_one| if count_zero <= count_one { 0 } else { 1 },
+        );
+
+    oxygen_rate * co2_scrubbing_rate
 }
 
 fn main() {
@@ -68,7 +112,7 @@ mod tests {
         .collect::<Vec<_>>();
         let result = part1(&lines);
         assert_eq!(result, 198);
-        // let result = part2(&lines);
-        // assert_eq!(result, 900);
+        let result = part2(&lines);
+        assert_eq!(result, 230);
     }
 }
