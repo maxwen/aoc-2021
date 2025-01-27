@@ -1,4 +1,3 @@
-use std::char::MAX;
 use aoc_2021::read_lines_as_vec;
 
 fn part1(lines: &[String]) -> u32 {
@@ -13,11 +12,10 @@ fn part1(lines: &[String]) -> u32 {
     let min_pos = crabs_pos.iter().min().unwrap();
     let max_pos = crabs_pos.iter().max().unwrap();
 
-    let mut sum = 0;
     let mut min_cost = u32::MAX;
 
     for i in *min_pos..max_pos + 1 {
-        sum = 0;
+        let mut sum = 0;
         for c in crabs_pos.iter() {
             let cost = i.abs_diff(*c);
             sum += cost;
@@ -31,6 +29,7 @@ fn part1(lines: &[String]) -> u32 {
 }
 
 fn part2(lines: &[String]) -> u32 {
+    // 89647695
     let line = lines[0].to_string();
 
     let crabs_pos = line
@@ -38,7 +37,25 @@ fn part2(lines: &[String]) -> u32 {
         .map(|f| f.parse().unwrap())
         .collect::<Vec<u32>>();
 
-    0u32
+    let min_pos = crabs_pos.iter().min().unwrap();
+    let max_pos = crabs_pos.iter().max().unwrap();
+
+    let mut min_cost = u32::MAX;
+
+    for i in *min_pos..max_pos + 1 {
+        let mut sum = 0;
+        for c in crabs_pos.iter() {
+            let mut cost = i.abs_diff(*c);
+            // https://en.wikipedia.org/wiki/1_%2B_2_%2B_3_%2B_4_%2B_%E2%8B%AF
+            cost = cost * (cost + 1) / 2;
+            sum += cost;
+        }
+        if sum < min_cost {
+            min_cost = sum;
+        }
+    }
+
+    min_cost
 }
 
 fn main() {
@@ -65,7 +82,7 @@ mod tests {
 
         let result = part1(&lines);
         assert_eq!(result, 37);
-        // let result = part2(&lines);
-        // assert_eq!(result, 26984457539);
+        let result = part2(&lines);
+        assert_eq!(result, 168);
     }
 }
