@@ -1,8 +1,10 @@
-use std::cell::RefCell;
 use aoc_2021::read_lines_as_vec;
+use std::cell::RefCell;
+use std::collections::HashSet;
 
 #[derive(Debug)]
 struct BingoBoard {
+    id: usize,
     numbers: Vec<Vec<u16>>,
     marked: Vec<u16>,
 }
@@ -18,7 +20,7 @@ impl BingoBoard {
             let line = self.get_line(y);
             let marked_num = line.iter().filter(|n| self.marked.contains(n)).count();
             if marked_num == 5 {
-                return true
+                return true;
             }
         }
         false
@@ -29,7 +31,7 @@ impl BingoBoard {
             let col = self.get_column(x);
             let marked_num = col.iter().filter(|n| self.marked.contains(n)).count();
             if marked_num == 5 {
-                return true
+                return true;
             }
         }
         false
@@ -64,23 +66,19 @@ impl BingoBoard {
     }
 }
 
-fn part1(lines: &[String]) -> u16 {
-    // 25023
-    let numbers = lines[0]
-        .split(",")
-        .map(|n| n.parse().unwrap())
-        .collect::<Vec<u16>>();
-
+fn parse_boards(lines: &[String]) -> Vec<RefCell<BingoBoard>> {
     let mut bingo_boards: Vec<RefCell<BingoBoard>> = vec![];
 
     let mut i = 2;
-
+    let mut board_id = 0;
     while i < lines.len() {
         let board_numbers = &lines[i..i + 5];
         let mut bingo_board = BingoBoard {
+            id: board_id,
             numbers: vec![],
             marked: vec![],
         };
+        board_id += 1;
         for board_line in board_numbers.iter() {
             let board_line_numbers = board_line
                 .split_ascii_whitespace()
@@ -94,6 +92,16 @@ fn part1(lines: &[String]) -> u16 {
 
         i += 6;
     }
+    bingo_boards
+}
+fn part1(lines: &[String]) -> u16 {
+    // 25023
+    let numbers = lines[0]
+        .split(",")
+        .map(|n| n.parse().unwrap())
+        .collect::<Vec<u16>>();
+
+    let bingo_boards = parse_boards(lines);
 
     for number in numbers.iter() {
         for board in bingo_boards.iter() {
@@ -106,8 +114,31 @@ fn part1(lines: &[String]) -> u16 {
     0u16
 }
 
-fn part2(lines: &[String]) -> u32 {
-    0u32
+fn part2(lines: &[String]) -> u16 {
+    // 2634
+    let numbers = lines[0]
+        .split(",")
+        .map(|n| n.parse().unwrap())
+        .collect::<Vec<u16>>();
+
+    let bingo_boards = parse_boards(lines);
+    let mut boards_not_won = HashSet::new();
+
+    (0..bingo_boards.len()).for_each(|n| { boards_not_won.insert(n); });
+
+    for number in numbers.iter() {
+        for board in bingo_boards.iter() {
+            let is_winner = board.borrow_mut().add_number(*number);
+            if is_winner {
+                boards_not_won.remove(&board.borrow().id);
+
+                if boards_not_won.is_empty() {
+                    return number * board.borrow().sum_unmarked();
+                }
+            }
+        }
+    }
+    0u16
 }
 
 fn main() {
@@ -173,7 +204,7 @@ mod tests {
         .collect::<Vec<_>>();
         let result = part1(&lines);
         assert_eq!(result, 4512);
-        // let result = part2(&lines);
-        // assert_eq!(result, 230);
+        let result = part2(&lines);
+        assert_eq!(result, 1924);
     }
 }
