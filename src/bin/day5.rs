@@ -33,13 +33,14 @@ impl Segment {
     fn insert_into_grid(&self, grid: &mut HashMap<(u16, u16), usize>) {
         if !self.diagonal {
             if self.y_start == self.y_end {
-                // line
+                // line left to right
                 if self.x_start < self.x_end {
                     for x in self.x_start..self.x_end + 1 {
                         let pos = (x, self.y_start);
                         grid.entry(pos).and_modify(|n| *n += 1).or_insert(1);
                     }
                 } else {
+                    // line right to left
                     for x in (self.x_end..self.x_start + 1).rev() {
                         let pos = (x, self.y_start);
                         grid.entry(pos).and_modify(|n| *n += 1).or_insert(1);
@@ -47,13 +48,14 @@ impl Segment {
                 }
             }
             if self.x_start == self.x_end {
-                // col
+                // col up to down
                 if self.y_start < self.y_end {
                     for y in self.y_start..self.y_end + 1 {
                         let pos = (self.x_start, y);
                         grid.entry(pos).and_modify(|n| *n += 1).or_insert(1);
                     }
                 } else {
+                    // col down to up
                     for y in (self.y_end..self.y_start + 1).rev() {
                         let pos = (self.x_start, y);
                         grid.entry(pos).and_modify(|n| *n += 1).or_insert(1);
@@ -62,23 +64,29 @@ impl Segment {
             }
         } else {
             if self.y_start < self.y_end {
+                // diagonal left to right
                 for y in self.y_start..self.y_end + 1 {
                     let diff = y - self.y_start;
                     if self.x_start < self.x_end {
+                        // left to right down
                         let pos = (self.x_start + diff, y);
                         grid.entry(pos).and_modify(|n| *n += 1).or_insert(1);
                     } else {
+                        // left to right up
                         let pos = (self.x_start - diff, y);
                         grid.entry(pos).and_modify(|n| *n += 1).or_insert(1);
                     }
                 }
             } else {
+                // diagonal right to left
                 for y in (self.y_end..self.y_start + 1).rev() {
                     let diff = self.y_start - y;
                     if self.x_start < self.x_end {
+                        // left to right down
                         let pos = (self.x_start + diff, y);
                         grid.entry(pos).and_modify(|n| *n += 1).or_insert(1);
                     } else {
+                        // left to right up
                         let pos = (self.x_start - diff, y);
                         grid.entry(pos).and_modify(|n| *n += 1).or_insert(1);
                     }
@@ -165,25 +173,14 @@ fn part2(lines: &[String]) -> usize {
             end_coords.last().unwrap().parse().unwrap(),
         );
 
-        if start.0 == end.0 || start.1 == end.1 {
-            let s = Segment {
-                x_start: start.0,
-                y_start: start.1,
-                x_end: end.0,
-                y_end: end.1,
-                diagonal: false,
-            };
-            segments.push(s);
-        } else {
-            let s = Segment {
-                x_start: start.0,
-                y_start: start.1,
-                x_end: end.0,
-                y_end: end.1,
-                diagonal: true,
-            };
-            segments.push(s);
-        }
+        let s = Segment {
+            x_start: start.0,
+            y_start: start.1,
+            x_end: end.0,
+            y_end: end.1,
+            diagonal: !(start.0 == end.0 || start.1 == end.1),
+        };
+        segments.push(s);
     }
 
     // let max_x = segments.iter().map(|s| s.get_max_x()).max().unwrap();
