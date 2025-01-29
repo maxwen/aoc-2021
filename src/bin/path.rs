@@ -1,10 +1,8 @@
-use aoc_2021::read_lines_as_vec;
+use aoc_2021::{read_lines_as_vec, Graph};
 use priority_queue::PriorityQueue;
-use std::cell::RefCell;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
 use std::fmt::{Display, Formatter};
-use std::time::Instant;
 
 type Point = (i32, i32);
 
@@ -147,6 +145,7 @@ fn bfs(grid: &Vec<Vec<Tile>>, start: Point, end: Point) -> i32 {
         let current_pos = current.pos;
 
         if current_pos == end {
+            // shortest path ONLY because we count steps and all steps have same length
             return steps;
         }
 
@@ -218,13 +217,13 @@ fn dijkstra(grid: &Vec<Vec<Tile>>, start: Point, end: Point) -> i32 {
 
 fn dfs_long(
     grid: &Vec<Vec<Tile>>,
-    graph: &Graph,
+    graph: &Graph<Point>,
     current_pos: Point,
     end: Point,
-    steps: u32,
-    current_max: u32,
+    steps: i32,
+    current_max: i32,
     seen: &mut HashSet<Point>,
-) -> u32 {
+) -> i32 {
     let mut max = current_max;
     if current_pos == end {
         if steps > current_max {
@@ -316,34 +315,7 @@ fn astar(grid: &Vec<Vec<Tile>>, start: Point, end: Point) -> u32 {
     min
 }
 
-struct GraphNode {
-    edges: RefCell<Vec<(Point, u32)>>,
-}
-
-struct Graph {
-    nodes: HashMap<Point, GraphNode>,
-}
-
-impl Graph {
-    fn add_edge(&mut self, start: Point, end: Point, length: u32) {
-        if self.nodes.contains_key(&start) {
-            self.nodes
-                .get(&start)
-                .unwrap()
-                .edges
-                .borrow_mut()
-                .push((end, length))
-        } else {
-            let node = GraphNode {
-                edges: RefCell::new(vec![]),
-            };
-            node.edges.borrow_mut().push((end, length));
-            self.nodes.insert(start, node);
-        }
-    }
-}
-
-fn build_graph(grid: &Vec<Vec<Tile>>, graph: &mut Graph, start: Point, end: Point) {
+fn build_graph(grid: &Vec<Vec<Tile>>, graph: &mut Graph<Point>, start: Point, end: Point) {
     let mut crossroad_pos_list = HashSet::new();
 
     crossroad_pos_list.insert(start);
@@ -410,21 +382,24 @@ fn main() {
 
     println!("bfs = {:?}", bfs(&grid, start, end));
     println!("dijkstra = {:?}", dijkstra(&grid, start, end));
-    println!("astar = {:?}", astar(&grid, start, end));
+    // println!("astar = {:?}", astar(&grid, start, end));
 
-    let mut seen = HashSet::new();
+    // let mut seen = HashSet::new();
     let mut graph = Graph {
-        nodes: Default::default(),
+        nodes: HashMap::new()
     };
 
-    let now = Instant::now();
+    // let now = Instant::now();
     build_graph(&grid, &mut graph, start, end);
-    println!(
-        "dfs long = {:?}",
-        dfs_long(&grid, &graph, start, end, 0, 0, &mut seen)
-    );
-    let elapsed = now.elapsed();
-    println!("Elapsed: {:.2?}", elapsed);
+    // println!(
+    //     "dfs long = {:?}",
+    //     dfs_long(&grid, &graph, start, end, 0, 0, &mut seen)
+    // );
+    // let elapsed = now.elapsed();
+    // println!("Elapsed: {:.2?}", elapsed);
+    println!("dijkstra2 = {:?}", graph.dijkstra(start, end));
+    println!("astar2 = {:?}", graph.astar(start, end, manhatten_distance));
+
 }
 
 #[cfg(test)]
