@@ -6,6 +6,15 @@ version = 3
 name = "aoc-2021"
 version = "0.1.0"
 dependencies = [
+ "aoc-utils-crate",
+ "priority-queue",
+]
+
+[[package]]
+name = "aoc-utils-crate"
+version = "0.1.0"
+source = "git+https://github.com/maxwen/aoc-utils-crate#f16fad4a7413ff0fe8964911f3f00ea24a2b9d4d"
+dependencies = [
  "priority-queue",
 ]
 

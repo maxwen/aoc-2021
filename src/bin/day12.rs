@@ -1,5 +1,6 @@
-use aoc_2021::{read_lines_as_vec, Graph};
+use aoc_utils_crate::graph::Graph;
 use std::collections::{HashMap, HashSet, VecDeque};
+use aoc_utils_crate::file::read_lines_as_vec;
 
 // every small only once
 fn test_small_caves_once(path: &Vec<&str>) -> bool {
