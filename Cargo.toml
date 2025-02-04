@@ -7,6 +7,7 @@ edition = "2021"
 priority-queue = "2.1.1"
 aoc-utils-crate = { git = "https://github.com/maxwen/aoc-utils-crate" }
 regex = "1.11.1"
+uuid = { version = "1.13.1", features = ["v4"] }
 
 [profile.release]
 opt-level = 3
