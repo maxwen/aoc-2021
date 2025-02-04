@@ -16,7 +16,6 @@ fn test_speed(
     let mut y_speed = y_speed;
     let mut y_max = y;
 
-    let mut t = 0;
     loop {
         x += x_speed;
         y += y_speed;
@@ -39,7 +38,6 @@ fn test_speed(
         if x > max_x || y < min_y {
             return (false, y_max);
         }
-        t += 1;
     }
 }
 
@@ -131,7 +129,7 @@ fn part2(line: &String) -> usize {
 
     for x_speed in x_speed_list {
         for y_speed in -max_y_speed..=max_y_speed {
-            let (hit, height_max) = test_speed(x_speed, y_speed, min_x, max_x, min_y, max_y);
+            let (hit, _) = test_speed(x_speed, y_speed, min_x, max_x, min_y, max_y);
             if hit {
                 hit_list.insert((x_speed, y_speed));
             }
@@ -152,7 +150,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use crate::part1;
+    use crate::{part1, part2};
 
     #[test]
     fn it_works() {
@@ -161,5 +159,7 @@ mod tests {
             .map(|s| s.to_string())
             .collect::<Vec<_>>();
         assert_eq!(part1(&lines[0]).1, 45);
+        assert_eq!(part2(&lines[0]), 112);
+
     }
 }
