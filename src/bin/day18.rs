@@ -1,7 +1,8 @@
-use aoc_2021::read_lines_as_vec;
-use std::fmt::{Display, Formatter};
+use itertools::Itertools;
 use regex::Regex;
+use std::fmt::{Display, Formatter};
 use uuid::Uuid;
+use aoc_2021::read_lines_as_vec;
 
 macro_rules! is_of_var {
     ($val:ident, $var:path) => {
@@ -20,11 +21,11 @@ struct List {
 
 impl Display for List {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        if self.items.len() == 2 {
-            write!(f, "{},", self.items.first().unwrap());
-            write!(f, "{}", self.items.last().unwrap());
-        } else if self.items.len() == 1 {
-            write!(f, "{}", self.items.first().unwrap());
+        for element in self.items.iter() {
+            match write!(f, "{},", element) {
+                Ok(_) => {}
+                Err(_) => {}
+            };
         }
         Ok(())
     }
@@ -78,10 +79,6 @@ impl List {
             items: vec![Element::Integer(left), Element::Integer(right)],
             uuid: Uuid::new_v4(),
         }
-    }
-
-    fn is_empty(&self) -> bool {
-        self.items.is_empty()
     }
 
     fn left(&self) -> &Element {
@@ -254,24 +251,6 @@ impl List {
         !is_of_var!(l, Element::Integer) && is_of_var!(r, Element::Integer)
     }
 
-    fn is_list_right(&self) -> bool {
-        if self.items.len() == 1 {
-            return false;
-        }
-        let r = self.items.get(1).unwrap();
-
-        is_of_var!(r, Element::List)
-    }
-
-    fn is_list_left(&self) -> bool {
-        if self.items.len() == 1 {
-            return false;
-        }
-        let l = self.items.get(0).unwrap();
-
-        is_of_var!(l, Element::List)
-    }
-
     fn get_first_pair(&self, level: usize) -> Option<Uuid> {
         for element in self.items.iter() {
             match element {
@@ -383,8 +362,8 @@ impl List {
     }
 
     fn explode(&mut self, pair: &List) {
-        let mut left_value = pair.left_value().unwrap();
-        let mut right_value = pair.right_value().unwrap();
+        let left_value = pair.left_value().unwrap();
+        let right_value = pair.right_value().unwrap();
 
         let left_uuid = pair.find_first_left_integer(&self, pair);
         let right_uuid = pair.find_first_right_integer(&self, pair);
@@ -416,7 +395,7 @@ impl List {
         }
 
         let p = self.parent(pair.uuid).unwrap();
-        let mut parent = self.find_mut(p.uuid).unwrap();
+        let parent = self.find_mut(p.uuid).unwrap();
 
         // replace pair with 0 in parent
         if let Some(l) = parent.left_list() {
@@ -503,7 +482,7 @@ impl List {
 
 fn parse_term(line: &String, i: usize, current: &mut List) -> usize {
     let mut i = i;
-    let mut current = current;
+    let current = current;
 
     while i < line.len() {
         let c = line.chars().nth(i).unwrap();
@@ -529,6 +508,47 @@ fn parse_term(line: &String, i: usize, current: &mut List) -> usize {
         }
     }
     i
+}
+fn reduce(r: &mut List) {
+    loop {
+        if let Some(uuid) = r.get_first_pair(0) {
+            let pair = r.find(uuid).unwrap().clone();
+            r.explode(&pair);
+            continue;
+        } else {
+            if r.can_split() {
+                r.split();
+                continue;
+            }
+        }
+        break
+    }
+}
+
+fn calc_magnitude(left: &Element, right: &Element) -> u32 {
+    let mut root_list = List::new();
+    match left {
+        Element::List(ref l) => {
+            root_list.items.push(Element::List(l.clone()));
+        }
+        _ => {}
+    };
+
+    match right {
+        Element::List(ref r) => {
+            root_list.items.push(Element::List(r.clone()));
+        }
+        _ => {}
+    };
+
+    let mut root_list2 = List::new();
+    root_list2
+        .items
+        .push(Element::List(Box::new(root_list.clone())));
+    let mut root = Some(root_list2);
+    let r = root.as_mut().unwrap();
+    reduce(r);
+    r.calc_magnitude()
 }
 
 fn part1(lines: &[String]) -> u32 {
@@ -574,55 +594,60 @@ fn part1(lines: &[String]) -> u32 {
             _ => {}
         }
 
-        let mut r = root.as_mut().unwrap();
-
-        loop {
-            let mut can_explode = true;
-            let mut can_split = true;
-
-            if let Some(uuid) = r.get_first_pair(0) {
-                let pair = r.find(uuid).unwrap().clone();
-                r.explode(&pair);
-                continue;
-            } else {
-                can_explode = false;
-            }
-            if r.can_split() {
-                r.split();
-                continue;
-            } else {
-                can_split = false;
-            }
-
-            if !can_split && !can_explode {
-                break;
-            }
-        }
+        let r = root.as_mut().unwrap();
+        reduce(r);
     }
     let r = root.as_ref().unwrap();
-
     r.calc_magnitude()
 }
 
-fn part2(lines: &[String]) -> usize {
-    0usize
+fn part2(lines: &[String]) -> u32 {
+    // 4616
+    let mut terms = vec![];
+
+    for line in lines.iter() {
+        let mut term = List::new();
+        parse_term(line, 0, &mut term);
+        let term_item = term.items.first().unwrap();
+        terms.push(term_item.clone());
+    }
+
+    let mut max_magnitude = 0;
+
+    for pair in terms.iter().combinations(2) {
+        let left = pair.first().unwrap();
+        let right = pair.last().unwrap();
+
+        let magnitude = calc_magnitude(left, right);
+        if magnitude > max_magnitude {
+            max_magnitude = magnitude
+        }
+
+        let magnitude = calc_magnitude(right, left);
+        if magnitude > max_magnitude {
+            max_magnitude = magnitude
+        }
+    }
+
+    max_magnitude
 }
 
 fn main() {
     // [[[[7,7],[7,7]],[[0,8],[9,9]]],[[[6,6],[6,7]],[2,1]]] = 3359
 
     let lines = read_lines_as_vec("input/input_day18.txt").unwrap();
+
     // let lines = vec![
-    //     "[[[0,[4,5]],[0,0]],[[[4,5],[2,6]],[9,5]]]",
-    //     "[7,[[[3,7],[4,3]],[[6,3],[8,8]]]]",
-    //     "[[2,[[0,8],[3,4]]],[[[6,7],1],[7,[1,6]]]]",
-    //     "[[[[2,4],7],[6,[0,5]]],[[[6,8],[2,8]],[[2,1],[4,5]]]]",
-    //     "[7,[5,[[3,8],[1,4]]]]",
-    //     "[[2,[2,2]],[8,[8,1]]]",
-    //     "[2,9]",
-    //     "[1,[[[9,3],9],[[9,0],[0,7]]]]",
-    //     "[[[5,[7,4]],7],1]",
-    //     "[[[[4,2],2],6],[8,7]]",
+    //     "[[[0,[5,8]],[[1,7],[9,6]]],[[4,[1,2]],[[1,4],2]]]",
+    //     "[[[5,[2,8]],4],[5,[[9,9],0]]]",
+    //     "[6,[[[6,2],[5,6]],[[7,6],[4,7]]]]",
+    //     "[[[6,[0,7]],[0,9]],[4,[9,[9,0]]]]",
+    //     "[[[7,[6,4]],[3,[1,3]]],[[[5,5],1],9]]",
+    //     "[[6,[[7,3],[3,2]]],[[[3,8],[5,7]],4]]",
+    //     "[[[[5,4],[7,7]],8],[[8,3],8]]",
+    //     "[[9,3],[[9,9],[6,[4,9]]]]",
+    //     "[[2,[[7,7],7]],[[5,8],[[9,3],[0,2]]]]",
+    //     "[[[[5,2],5],[8,[3,7]]],[[5,[7,5]],[4,4]]]",
     // ]
     // .iter()
     // .map(|s| s.to_string())
@@ -635,7 +660,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use crate::part1;
+    use crate::{part1, part2};
 
     #[test]
     fn it_works() {
@@ -655,6 +680,22 @@ mod tests {
         .map(|s| s.to_string())
         .collect::<Vec<_>>();
         assert_eq!(part1(&lines), 4140);
-        // assert_eq!(part2(&lines));
+
+        let lines = vec![
+            "[[[0,[5,8]],[[1,7],[9,6]]],[[4,[1,2]],[[1,4],2]]]",
+            "[[[5,[2,8]],4],[5,[[9,9],0]]]",
+            "[6,[[[6,2],[5,6]],[[7,6],[4,7]]]]",
+            "[[[6,[0,7]],[0,9]],[4,[9,[9,0]]]]",
+            "[[[7,[6,4]],[3,[1,3]]],[[[5,5],1],9]]",
+            "[[6,[[7,3],[3,2]]],[[[3,8],[5,7]],4]]",
+            "[[[[5,4],[7,7]],8],[[8,3],8]]",
+            "[[9,3],[[9,9],[6,[4,9]]]]",
+            "[[2,[[7,7],7]],[[5,8],[[9,3],[0,2]]]]",
+            "[[[[5,2],5],[8,[3,7]]],[[5,[7,5]],[4,4]]]",
+        ]
+        .iter()
+        .map(|s| s.to_string())
+        .collect::<Vec<_>>();
+        assert_eq!(part2(&lines), 3993);
     }
 }
