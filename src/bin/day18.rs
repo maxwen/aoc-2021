@@ -1,5 +1,6 @@
 use aoc_2021::read_lines_as_vec;
 use std::fmt::{Display, Formatter};
+use regex::Regex;
 use uuid::Uuid;
 
 macro_rules! is_of_var {
@@ -174,6 +175,10 @@ impl List {
         }
         None
     }
+
+    // must always use uuid to get a mutable reference
+    // to change the tree in a separate step to avoid
+    // any borrow issues
     fn find_mut(&mut self, uuid: Uuid) -> Option<&mut List> {
         if self.uuid == uuid {
             return Some(self);
@@ -191,6 +196,7 @@ impl List {
         None
     }
 
+    // yes we dont need a parent ref/pointer/whatever
     fn parent(&self, uuid: Uuid) -> Option<&List> {
         for element in self.items.iter() {
             match element {
@@ -206,22 +212,6 @@ impl List {
             }
         }
         None
-    }
-
-    // fn replace(&mut self, uuid: Uuid, list: &List) {
-    //     let binding = self.find_mut(uuid);
-    //     let mut p = binding.unwrap();
-    //     println!("replace {} with {}", p, list);
-    //     p.items.clear();
-    //     p.items.append(&mut list.items.clone());
-    // }
-
-    fn bottom_right(&self) -> &Element {
-        let left = self.items.last().unwrap();
-        match left {
-            Element::List(ref list) => list.bottom_right(),
-            Element::Integer(ref element) => left,
-        }
     }
 
     fn is_list_pair(&self) -> bool {
@@ -299,38 +289,14 @@ impl List {
         None
     }
 
-    // fn replace_pair(&mut self, replace: &List, path: &Vec<usize>, level: usize) {
-    //     if level == path.len() {
-    //         println!("{:?} -> {:?}", self, replace);
-    //         self.items.clear();
-    //         self.items.append(&mut replace.items.clone());
-    //         return;
-    //     }
-    //
-    //     let path_i = path[level];
-    //     let mut i = 0;
-    //     for element in self.items.iter_mut() {
-    //         match element {
-    //             Element::List(ref mut list) => {
-    //                 if i == path_i {
-    //                     list.replace_pair(replace, path, level + 1);
-    //                 } else {
-    //                 }
-    //             }
-    //             _ => {}
-    //         }
-    //         i += 1;
-    //     }
-    // }
-
     fn find_first_left_integer(&self, root: &List, last: &List) -> Option<Uuid> {
-        // println!("find_first_left_integer {}", self);
         if self.is_integer_left() {
             return Some(self.uuid);
         }
 
         if self.is_list_pair() {
-            // down search
+            // down search the other side
+            // BUT we must search right down to get the closest to us
             if let Some(l) = self.left_list() {
                 if l.uuid != last.uuid {
                     if let Some(res) = l.find_first_right_integer_down(root) {
@@ -383,12 +349,12 @@ impl List {
     }
 
     fn find_first_right_integer(&self, root: &List, last: &List) -> Option<Uuid> {
-        // println!("find_first_right_integer {}", self);
         if self.is_integer_right() {
             return Some(self.uuid);
         }
         if self.is_list_pair() {
-            // down search
+            // down search the other side
+            // BUT we must search left down to get the closest
             if let Some(r) = self.right_list() {
                 if r.uuid != last.uuid {
                     if let Some(res) = r.find_first_left_integer_down(root) {
@@ -425,7 +391,6 @@ impl List {
 
         if left_uuid.is_some() {
             let left = self.find_mut(left_uuid.unwrap()).unwrap();
-            // println!("left {}", left);
 
             if left.is_integer_left() {
                 let left_add_value = left.left_value().unwrap();
@@ -435,13 +400,11 @@ impl List {
                 let left_add_value = left.right_value().unwrap();
                 left.set_right_value(left_value + left_add_value);
             }
-
-            // println!("left {}", left);
         }
 
         if right_uuid.is_some() {
             let right = self.find_mut(right_uuid.unwrap()).unwrap();
-            // println!("right {}", right);
+
             if right.is_integer_right() {
                 let right_add_value = right.right_value().unwrap();
                 right.set_right_value(right_value + right_add_value);
@@ -450,42 +413,25 @@ impl List {
                 let right_add_value = right.left_value().unwrap();
                 right.set_left_value(right_value + right_add_value);
             }
-
-            // println!("right {}", right);
         }
 
         let p = self.parent(pair.uuid).unwrap();
-
         let mut parent = self.find_mut(p.uuid).unwrap();
-        match parent.left() {
-            Element::List(ref list) => {
-                if list.uuid == pair.uuid {
-                    parent.set_left_value(0);
-                }
+
+        // replace pair with 0 in parent
+        if let Some(l) = parent.left_list() {
+            if l.uuid == pair.uuid {
+                parent.set_left_value(0);
             }
-            _ => {}
         }
-        match parent.right() {
-            Element::List(ref list) => {
-                if list.uuid == pair.uuid {
-                    parent.set_right_value(0);
-                }
+        if let Some(r) = parent.right_list() {
+            if r.uuid == pair.uuid {
+                parent.set_right_value(0);
             }
-            _ => {}
         }
     }
 
     fn can_split(&self) -> bool {
-        // if self.is_integer_right() || self.is_integer_pair() {
-        //     if self.right_value().unwrap() >= 10 {
-        //         return true;
-        //     }
-        // }
-        // if self.is_integer_left() || self.is_integer_pair() {
-        //     if self.left_value().unwrap() >= 10 {
-        //         return true;
-        //     }
-        // }
         for element in self.items.iter() {
             match element {
                 Element::List(ref list) => {
@@ -504,30 +450,6 @@ impl List {
     }
 
     fn split(&mut self) -> bool {
-        // if self.is_integer_left() || self.is_integer_pair() {
-        //     if self.left_value().unwrap() >= 10 {
-        //         //
-        //         let split_value = self.left_value().unwrap();
-        //         println!("split left {:?}", split_value);
-        //         let left = split_value / 2;
-        //         let right = split_value - left;
-        //         let s = List::new_with_values(left, right);
-        //         self.set_left_list(s);
-        //         return true;
-        //     }
-        // }
-        // if self.is_integer_right() || self.is_integer_pair() {
-        //     if self.right_value().unwrap() >= 10 {
-        //         //
-        //         let split_value = self.right_value().unwrap();
-        //         println!("split right {:?}", split_value);
-        //         let left = split_value / 2;
-        //         let right = split_value - left;
-        //         let s = List::new_with_values(left, right);
-        //         self.set_right_list(s);
-        //         return true;
-        //     }
-        // }
         let mut i = 0;
         for element in self.items.iter_mut() {
             match element {
@@ -539,7 +461,6 @@ impl List {
                 Element::Integer(ref value) => {
                     let split_value = *value;
                     if split_value >= 10 {
-                        println!("split left {:?}", value);
                         let left = split_value / 2;
                         let right = split_value - left;
                         let s = List::new_with_values(left, right);
@@ -559,42 +480,25 @@ impl List {
     }
 
     fn calc_magnitude(&self) -> u32 {
+        // root always is single item list
         if self.items.len() == 1 {
             let item = self.items.first().unwrap();
             match item {
-                Element::List(ref list) => {
-                    list.calc_magnitude()
-                }
-                _ => {0}
+                Element::List(ref list) => list.calc_magnitude(),
+                _ => 0,
             }
         } else {
             let left = match self.left() {
                 Element::Integer(ref value) => *value,
-                Element::List(ref list) => {
-                    list.calc_magnitude()
-                }
+                Element::List(ref list) => list.calc_magnitude(),
             };
             let right = match self.right() {
                 Element::Integer(ref value) => *value,
-                Element::List(ref list) => {
-                    list.calc_magnitude()
-                }
+                Element::List(ref list) => list.calc_magnitude(),
             };
             left * 3 + right * 2
         }
     }
-}
-
-fn add(root: &List, list2: &List) -> Element {
-    let mut l = Element::List(Box::new(List::new()));
-    match l {
-        Element::List(ref mut l) => {
-            l.set_left_list(root.clone());
-            l.set_right_list(list2.clone())
-        }
-        _ => {}
-    }
-    l
 }
 
 fn parse_term(line: &String, i: usize, current: &mut List) -> usize {
@@ -616,7 +520,9 @@ fn parse_term(line: &String, i: usize, current: &mut List) -> usize {
         } else {
             let c = line.chars().nth(i).unwrap();
             if c.is_digit(10) {
-                let int_value = Element::Integer(c.to_digit(10).unwrap());
+                let reg = Regex::new(r"\d+").unwrap();
+                let int_value_str = reg.find(line.get(i..).unwrap()).unwrap().as_str();
+                let int_value = Element::Integer(int_value_str.parse().unwrap());
                 current.items.push(int_value);
                 i += 1;
             }
@@ -632,6 +538,7 @@ fn part1(lines: &[String]) -> u32 {
         let mut term = List::new();
         parse_term(line, 0, &mut term);
         let term_item = term.items.first().unwrap();
+        // TODO this is HORRIBLE
         match term_item {
             Element::List(ref list) => {
                 if root.is_none() {
@@ -666,63 +573,26 @@ fn part1(lines: &[String]) -> u32 {
             }
             _ => {}
         }
-        // println!("{:?}", root);
 
         let mut r = root.as_mut().unwrap();
-        println!("{}", r);
-
-        // for element in l.items.iter() {
-        //     match element {
-        //         Element::List(ref list) => {
-        //             println!("{}", list);
-        //             copy = Some(list.clone());
-        //         }
-        //         _ => {}
-        //     }
-        // }
-        //
-        // if root.is_none() {
-        //     root = Element::List(Box::new(l))
-        // } else {
-        //     let mut l = List::new();
-        //     l.items.push(root_list.clone());
-        //     l.items.push(l.clone());
-        //     root = Element::List(Box::new(l))
-        // }
-        // let mut r = root.as_mut().unwrap();
-        // println!("{}", r);
 
         loop {
             let mut can_explode = true;
             let mut can_split = true;
 
             if let Some(uuid) = r.get_first_pair(0) {
-                // let l = r.find(uuid).unwrap();
-                // println!("{:?}", l);
-                // let mut l_new = l.clone();
                 let pair = r.find(uuid).unwrap().clone();
-                println!("explode {}", pair);
                 r.explode(&pair);
-                // println!("{:?}", l_new);
-                // let parent = r.parent(l.uuid).unwrap();
-                // r.replace(parent.uuid, &l_new);
-
-                // let parent = root.as_ref().unwrap().parent(l.uuid).unwrap();
-                // parent.replace_pair(&pair, );
-                println!("after explode {}", r);
                 continue;
             } else {
                 can_explode = false;
             }
             if r.can_split() {
                 r.split();
-                println!("after split {}", r);
                 continue;
             } else {
                 can_split = false;
             }
-
-            println!();
 
             if !can_split && !can_explode {
                 break;
@@ -731,9 +601,6 @@ fn part1(lines: &[String]) -> u32 {
     }
     let r = root.as_ref().unwrap();
 
-    println!("{}", r);
-
-    // [[[[7,7],[7,7]],[[0,8],[9,9]]],[[[6,6],[6,7]],[2,1]]] = 3359
     r.calc_magnitude()
 }
 
@@ -742,43 +609,52 @@ fn part2(lines: &[String]) -> usize {
 }
 
 fn main() {
+    // [[[[7,7],[7,7]],[[0,8],[9,9]]],[[[6,6],[6,7]],[2,1]]] = 3359
+
     let lines = read_lines_as_vec("input/input_day18.txt").unwrap();
     // let lines = vec![
-    //     "[[1,2],[[3,4],5]]", // "[[[0,[4,5]],[0,0]],[[[4,5],[2,6]],[9,5]]]",
-    //                          // "[7,[[[3,7],[4,3]],[[6,3],[8,8]]]]",
-    //                          // "[[2,[[0,8],[3,4]]],[[[6,7],1],[7,[1,6]]]]",
-    //                          // "[[[[2,4],7],[6,[0,5]]],[[[6,8],[2,8]],[[2,1],[4,5]]]]",
-    //                          // "[7,[5,[[3,8],[1,4]]]]",
-    //                          // "[[2,[2,2]],[8,[8,1]]]",
-    //                          // "[2,9]",
-    //                          // "[1,[[[9,3],9],[[9,0],[0,7]]]]",
-    //                          // "[[[5,[7,4]],7],1]",
-    //                          // "[[[[4,2],2],6],[8,7]]",
+    //     "[[[0,[4,5]],[0,0]],[[[4,5],[2,6]],[9,5]]]",
+    //     "[7,[[[3,7],[4,3]],[[6,3],[8,8]]]]",
+    //     "[[2,[[0,8],[3,4]]],[[[6,7],1],[7,[1,6]]]]",
+    //     "[[[[2,4],7],[6,[0,5]]],[[[6,8],[2,8]],[[2,1],[4,5]]]]",
+    //     "[7,[5,[[3,8],[1,4]]]]",
+    //     "[[2,[2,2]],[8,[8,1]]]",
+    //     "[2,9]",
+    //     "[1,[[[9,3],9],[[9,0],[0,7]]]]",
+    //     "[[[5,[7,4]],7],1]",
+    //     "[[[[4,2],2],6],[8,7]]",
     // ]
     // .iter()
     // .map(|s| s.to_string())
     // .collect::<Vec<_>>();
 
-    // [[[[8,7],[7,7]],[[8,6],[7,7]]],[[[0,7],[6,6]],[8,7]]]
+    // [[[[8,7],[7,7]],[[8,6],[7,7]]],[[[0,7],[6,6]],[8,7]]] - 3488
     println!("{}", part1(&lines));
     println!("{}", part2(&lines));
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use crate::{part1, part2};
-//
-//     #[test]
-//     fn it_works() {
-//         let lines = vec![
-//             /*"[[6,[5,[4,[3,2]]]],1]",
-//             "[7,[6,[5,[4,[3,2]]]]]",
-//             "[[[[[9,8],1],2],3],4]",
-//             "[[3,[2,[1,[7,3]]]],[6,[5,[4,[3,2]]]]]",
-//             "[[[[[4,3],4],4],[7,[[8,4],9]]],[1,1]]",*/
-//             "[[[[0,7],4],[[7,8],[0,[6,7]]]],[1,1]]"
-//         ];
-//         assert_eq!(part1(&lines));
-//         assert_eq!(part2(&lines));
-//     }
-// }
+#[cfg(test)]
+mod tests {
+    use crate::part1;
+
+    #[test]
+    fn it_works() {
+        let lines = vec![
+            "[[[0,[5,8]],[[1,7],[9,6]]],[[4,[1,2]],[[1,4],2]]]",
+            "[[[5,[2,8]],4],[5,[[9,9],0]]]",
+            "[6,[[[6,2],[5,6]],[[7,6],[4,7]]]]",
+            "[[[6,[0,7]],[0,9]],[4,[9,[9,0]]]]",
+            "[[[7,[6,4]],[3,[1,3]]],[[[5,5],1],9]]",
+            "[[6,[[7,3],[3,2]]],[[[3,8],[5,7]],4]]",
+            "[[[[5,4],[7,7]],8],[[8,3],8]]",
+            "[[9,3],[[9,9],[6,[4,9]]]]",
+            "[[2,[[7,7],7]],[[5,8],[[9,3],[0,2]]]]",
+            "[[[[5,2],5],[8,[3,7]]],[[5,[7,5]],[4,4]]]",
+        ]
+        .iter()
+        .map(|s| s.to_string())
+        .collect::<Vec<_>>();
+        assert_eq!(part1(&lines), 4140);
+        // assert_eq!(part2(&lines));
+    }
+}
