@@ -1,3 +1,4 @@
+use aoc_2021::read_lines_as_vec;
 use std::fmt::{Display, Formatter};
 use uuid::Uuid;
 
@@ -557,25 +558,30 @@ impl List {
         false
     }
 
-    fn calc_magnitude(&self, sum: u32) -> u32 {
-        let mut sum = sum;
-        for element in self.items.iter() {
-            match element {
+    fn calc_magnitude(&self) -> u32 {
+        if self.items.len() == 1 {
+            let item = self.items.first().unwrap();
+            match item {
                 Element::List(ref list) => {
-                    if list.is_integer_pair() {
-                        sum += list.left_value().unwrap() * 3 + list.right_value().unwrap() * 2
-                    } else if list.is_integer_left() {
-                        sum += list.left_value().unwrap() * 3 + list.calc_magnitude(sum) * 2
-                    } else if list.is_integer_right() {
-                        sum += list.calc_magnitude(sum) * 3 + list.right_value().unwrap() * 2
-                    } else if list.is_list_pair() {
-                        sum += list.calc_magnitude(sum)
-                    }
+                    list.calc_magnitude()
                 }
-                _ => {}
+                _ => {0}
             }
+        } else {
+            let left = match self.left() {
+                Element::Integer(ref value) => *value,
+                Element::List(ref list) => {
+                    list.calc_magnitude()
+                }
+            };
+            let right = match self.right() {
+                Element::Integer(ref value) => *value,
+                Element::List(ref list) => {
+                    list.calc_magnitude()
+                }
+            };
+            left * 3 + right * 2
         }
-        sum
     }
 }
 
@@ -619,7 +625,7 @@ fn parse_term(line: &String, i: usize, current: &mut List) -> usize {
     i
 }
 
-fn part1(lines: &[String]) -> usize {
+fn part1(lines: &[String]) -> u32 {
     let mut root: Option<List> = None;
 
     for line in lines.iter() {
@@ -722,9 +728,13 @@ fn part1(lines: &[String]) -> usize {
                 break;
             }
         }
-        println!("{}", r.calc_magnitude(0));
     }
-    0usize
+    let r = root.as_ref().unwrap();
+
+    println!("{}", r);
+
+    // [[[[7,7],[7,7]],[[0,8],[9,9]]],[[[6,6],[6,7]],[2,1]]] = 3359
+    r.calc_magnitude()
 }
 
 fn part2(lines: &[String]) -> usize {
@@ -732,22 +742,22 @@ fn part2(lines: &[String]) -> usize {
 }
 
 fn main() {
-    // let lines = read_lines_as_vec("input/input_day18.txt").unwrap();
-    let lines = vec![
-        "[[1,2],[[3,4],5]]", // "[[[0,[4,5]],[0,0]],[[[4,5],[2,6]],[9,5]]]",
-                             // "[7,[[[3,7],[4,3]],[[6,3],[8,8]]]]",
-                             // "[[2,[[0,8],[3,4]]],[[[6,7],1],[7,[1,6]]]]",
-                             // "[[[[2,4],7],[6,[0,5]]],[[[6,8],[2,8]],[[2,1],[4,5]]]]",
-                             // "[7,[5,[[3,8],[1,4]]]]",
-                             // "[[2,[2,2]],[8,[8,1]]]",
-                             // "[2,9]",
-                             // "[1,[[[9,3],9],[[9,0],[0,7]]]]",
-                             // "[[[5,[7,4]],7],1]",
-                             // "[[[[4,2],2],6],[8,7]]",
-    ]
-    .iter()
-    .map(|s| s.to_string())
-    .collect::<Vec<_>>();
+    let lines = read_lines_as_vec("input/input_day18.txt").unwrap();
+    // let lines = vec![
+    //     "[[1,2],[[3,4],5]]", // "[[[0,[4,5]],[0,0]],[[[4,5],[2,6]],[9,5]]]",
+    //                          // "[7,[[[3,7],[4,3]],[[6,3],[8,8]]]]",
+    //                          // "[[2,[[0,8],[3,4]]],[[[6,7],1],[7,[1,6]]]]",
+    //                          // "[[[[2,4],7],[6,[0,5]]],[[[6,8],[2,8]],[[2,1],[4,5]]]]",
+    //                          // "[7,[5,[[3,8],[1,4]]]]",
+    //                          // "[[2,[2,2]],[8,[8,1]]]",
+    //                          // "[2,9]",
+    //                          // "[1,[[[9,3],9],[[9,0],[0,7]]]]",
+    //                          // "[[[5,[7,4]],7],1]",
+    //                          // "[[[[4,2],2],6],[8,7]]",
+    // ]
+    // .iter()
+    // .map(|s| s.to_string())
+    // .collect::<Vec<_>>();
 
     // [[[[8,7],[7,7]],[[8,6],[7,7]]],[[[0,7],[6,6]],[8,7]]]
     println!("{}", part1(&lines));
