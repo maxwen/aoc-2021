@@ -21,11 +21,27 @@ struct List {
 
 impl Display for List {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        for element in self.items.iter() {
-            match write!(f, "{},", element) {
+        if self.items.len() == 1 {
+            match write!(f, "{}", self.items.first().unwrap()) {
                 Ok(_) => {}
                 Err(_) => {}
             };
+        } else {
+            let mut i = 0;
+            for element in self.items.iter() {
+                if i == 0 {
+                    match write!(f, "{},", element) {
+                        Ok(_) => {}
+                        Err(_) => {}
+                    };
+                } else {
+                    match write!(f, "{}", element) {
+                        Ok(_) => {}
+                        Err(_) => {}
+                    };
+                }
+                i += 1;
+            }
         }
         Ok(())
     }
@@ -521,7 +537,7 @@ fn reduce(r: &mut List) {
                 continue;
             }
         }
-        break
+        break;
     }
 }
 
@@ -558,41 +574,40 @@ fn part1(lines: &[String]) -> u32 {
         let mut term = List::new();
         parse_term(line, 0, &mut term);
         let term_item = term.items.first().unwrap();
-        // TODO this is HORRIBLE
-        match term_item {
-            Element::List(ref list) => {
-                if root.is_none() {
-                    let mut root_list = List::new();
-                    root_list.items.push(Element::List(list.clone()));
-                    root = Some(root_list);
-                } else {
-                    let r = root.as_ref().unwrap();
-                    if r.items.len() == 1 {
-                        let root_item = r.items.first().unwrap();
-                        match root_item {
-                            Element::List(ref old_list) => {
-                                let mut root_list = List::new();
-                                root_list.items.push(Element::List(old_list.clone()));
-                                root_list.items.push(Element::List(list.clone()));
 
-                                let mut root_list2 = List::new();
-                                root_list2
-                                    .items
-                                    .push(Element::List(Box::new(root_list.clone())));
-                                root = Some(root_list2);
-                            }
-                            _ => {}
-                        }
-                    } else {
-                        let mut root_list = List::new();
-                        root_list.items.push(Element::List(Box::new(r.clone())));
-                        root_list.items.push(Element::List(list.clone()));
-                        root = Some(root_list);
-                    }
+        if root.is_none() {
+            let mut root_list = List::new();
+            match term_item {
+                Element::List(ref l) => {
+                    root_list.items.push(Element::List(l.clone()));
                 }
+                _ => {}
+            };
+            root = Some(root_list);
+            continue;
+        }
+        let mut r = root.as_mut().unwrap();
+        let mut root_list = List::new();
+        match r.items.first().unwrap() {
+            Element::List(ref l) => {
+                root_list.items.push(Element::List(l.clone()));
             }
             _ => {}
-        }
+        };
+
+        match term_item {
+            Element::List(ref r) => {
+                root_list.items.push(Element::List(r.clone()));
+            }
+            _ => {}
+        };
+
+        let mut root_list2 = List::new();
+        root_list2
+            .items
+            .push(Element::List(Box::new(root_list.clone())));
+
+        root = Some(root_list2);
 
         let r = root.as_mut().unwrap();
         reduce(r);
