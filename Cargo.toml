@@ -9,6 +9,7 @@ aoc-utils-crate = { git = "https://github.com/maxwen/aoc-utils-crate" }
 regex = "1.11.1"
 uuid = { version = "1.13.1", features = ["v4"] }
 itertools = "0.14.0"
+glam = "0.29.2"
 
 [profile.release]
 opt-level = 3
